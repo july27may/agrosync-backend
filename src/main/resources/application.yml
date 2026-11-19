@@ -1,0 +1,38 @@
+server:
+  port: ${SERVER_PORT:8081}
+  address: ${SERVER_ADDRESS:127.0.0.1}
+  servlet:
+    session:
+      timeout: 30m
+      cookie:
+        http-only: true
+        same-site: lax
+  error:
+    include-message: never
+    include-stacktrace: never
+
+spring:
+  application:
+    name: agrosync-backend
+  jackson:
+    deserialization:
+      use-big-decimal-for-floats: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
+suitecrm:
+  base-url: ${SUITECRM_BASE_URL:http://127.0.0.1:8080}
+  client-id: ${SUITECRM_CLIENT_ID:}
+  client-secret: ${SUITECRM_CLIENT_SECRET:}
+  connect-timeout: ${SUITECRM_CONNECT_TIMEOUT:3s}
+  read-timeout: ${SUITECRM_READ_TIMEOUT:5s}
+
+agrosync:
+  offline-ttl: ${AGROSYNC_OFFLINE_TTL:24h}
