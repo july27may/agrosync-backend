@@ -1,6 +1,7 @@
 package com.agrosync.backend.inventario;
 
 import com.agrosync.backend.auth.FarmAccess;
+import com.agrosync.backend.bitacora.Bitacora;
 import com.agrosync.backend.auth.SuiteCrmIdentity;
 import com.agrosync.backend.shared.exception.ApiException;
 import jakarta.validation.Valid;
@@ -21,10 +22,12 @@ public class InventarioController {
     private static final String CRM = "/Api/V8/custom/agrosync/inventario";
     private final FarmAccess access;
     private final SuiteCrmIdentity crm;
+    private final Bitacora audit;
 
-    public InventarioController(FarmAccess access, SuiteCrmIdentity crm) {
+    public InventarioController(FarmAccess access, SuiteCrmIdentity crm, Bitacora audit) {
         this.access = access;
         this.crm = crm;
+        this.audit = audit;
     }
 
     @GetMapping
@@ -50,10 +53,12 @@ public class InventarioController {
             throw ApiException.forbidden();
         }
         if (new java.math.BigDecimal(input.cantidad()).signum() <= 0) throw ApiException.invalidMovement();
-        var result = crm.post(principal, CRM + "/movimientos", input, ApiException::conflictingInventory);
-        var expected = input.operationId().toString();
-        if (!expected.equals(result.path("operationId").stringValue(null))
-                || !expected.equals(result.path("crmId").stringValue(null))) throw ApiException.invalidResponse();
-        return result;
+        return audit.sync(principal, input.operationId(), input.fincaId(), "inventario/movimientos", () -> {
+            var result = crm.post(principal, CRM + "/movimientos", input, ApiException::conflictingInventory);
+            var expected = input.operationId().toString();
+            if (!expected.equals(result.path("operationId").stringValue(null))
+                    || !expected.equals(result.path("crmId").stringValue(null))) throw ApiException.invalidResponse();
+            return result;
+        });
     }
 }

@@ -1,6 +1,7 @@
 package com.agrosync.backend.cosechas;
 
 import com.agrosync.backend.auth.FarmAccess;
+import com.agrosync.backend.bitacora.Bitacora;
 import com.agrosync.backend.auth.SuiteCrmIdentity;
 import com.agrosync.backend.shared.exception.ApiException;
 import jakarta.validation.Valid;
@@ -27,10 +28,12 @@ public class CosechasController {
 
     private final FarmAccess access;
     private final SuiteCrmIdentity identity;
+    private final Bitacora audit;
 
-    public CosechasController(FarmAccess access, SuiteCrmIdentity identity) {
+    public CosechasController(FarmAccess access, SuiteCrmIdentity identity, Bitacora audit) {
         this.access = access;
         this.identity = identity;
+        this.audit = audit;
     }
 
     record Capture(@NotNull UUID operationId,
@@ -62,13 +65,15 @@ public class CosechasController {
         if (user.permisos().get(capture.fincaId()) == FarmAccess.Role.CONSULTA) {
             throw ApiException.forbidden();
         }
-        var document = identity.createHarvest(principal, capture);
-        var expected = capture.operationId().toString();
-        var operationId = document.path("operationId").stringValue(null);
-        var crmId = document.path("crmId").stringValue(null);
-        if (!expected.equals(operationId) || !expected.equals(crmId)) {
-            throw ApiException.invalidResponse();
-        }
-        return new Confirmation(operationId, crmId);
+        return audit.sync(principal, capture.operationId(), capture.fincaId(), "cosechas", () -> {
+            var document = identity.createHarvest(principal, capture);
+            var expected = capture.operationId().toString();
+            var operationId = document.path("operationId").stringValue(null);
+            var crmId = document.path("crmId").stringValue(null);
+            if (!expected.equals(operationId) || !expected.equals(crmId)) {
+                throw ApiException.invalidResponse();
+            }
+            return new Confirmation(operationId, crmId);
+        });
     }
 }

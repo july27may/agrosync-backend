@@ -145,3 +145,8 @@ Archivos CRM: `custom/Extension/application/Ext/Api/V8/ganaderia.php`, resolutor
 ## Consulta semanal de Café
 
 `GET /api/v1/cosechas?fincaId=<id>&semana=<AAAA-MM-DD>` recibe el lunes de la semana. Java comprueba la sesión y la finca vigente. La extensión de SuiteCRM valida de nuevo el alcance con el token delegado y usa la finca real del lote para obtener las cosechas. Devuelve el peso en gramos y la tarifa histórica en centavos, junto con el ID central y el recolector. El contrato aplica a los perfiles de lectura, incluido Consulta.
+
+
+## Bitácora de sincronización
+
+`GET /api/v1/bitacora?fincaId=...` requiere sesión delegada y permiso en esa finca. Acepta el filtro `operationId` y el cursor `antes` devuelto por la página anterior. El backend registra intentos antes de enviar cambios válidos a SuiteCRM y resultados después de comprobar el acuse. Los eventos contienen únicamente metadatos y códigos de causa permitidos. Aplica la [migración de bitácora de SuiteCRM](https://github.com/july27may/agrosync-suitecrm/blob/main/scripts/sql/bitacora.sql) junto con las extensiones V8 antes de activar esta versión.

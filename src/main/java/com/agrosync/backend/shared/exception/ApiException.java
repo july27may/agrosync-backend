@@ -82,6 +82,13 @@ public final class ApiException extends RuntimeException {
         };
     }
 
+    public static ApiException auditConflict(String code) {
+        if ("CONFLICTO_NO_REGISTRADO".equals(code)) {
+            return new ApiException(HttpStatus.CONFLICT, code, "La operación no tiene un conflicto registrado en la bitácora central.");
+        }
+        return new ApiException(HttpStatus.CONFLICT, "INCIDENCIA_CONFLICTIVA", "La incidencia ya corresponde a otra operación.");
+    }
+
     public static ApiException invalidMovement() {
         return new ApiException(HttpStatus.BAD_REQUEST, "MOVIMIENTO_INVALIDO", "La cantidad debe ser positiva.");
     }

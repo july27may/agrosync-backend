@@ -1,6 +1,7 @@
 package com.agrosync.backend.ganaderia;
 
 import com.agrosync.backend.auth.FarmAccess;
+import com.agrosync.backend.bitacora.Bitacora;
 import com.agrosync.backend.auth.SuiteCrmIdentity;
 import com.agrosync.backend.shared.exception.ApiException;
 import jakarta.validation.Valid;
@@ -19,10 +20,12 @@ public class GanaderiaController {
     private static final String ID = "[A-Za-z0-9_-]{1,36}";
     private final FarmAccess access;
     private final SuiteCrmIdentity crm;
+    private final Bitacora audit;
 
-    public GanaderiaController(FarmAccess access, SuiteCrmIdentity crm) {
+    public GanaderiaController(FarmAccess access, SuiteCrmIdentity crm, Bitacora audit) {
         this.access = access;
         this.crm = crm;
+        this.audit = audit;
     }
 
     @GetMapping
@@ -68,10 +71,12 @@ public class GanaderiaController {
         if (role == FarmAccess.Role.CONSULTA || (animal && role != FarmAccess.Role.ADMINISTRADOR_FINCA)) {
             throw ApiException.forbidden();
         }
-        var response = crm.post(principal, CRM + "/" + resource, body, ApiException::conflictingLivestock);
-        var expected = operation.toString();
-        if (!expected.equals(response.path("operationId").stringValue(null))
-                || !expected.equals(response.path("crmId").stringValue(null))) throw ApiException.invalidResponse();
-        return new Receipt(expected, expected);
+        return audit.sync(principal, operation, farm, "ganaderia/" + resource, () -> {
+            var response = crm.post(principal, CRM + "/" + resource, body, ApiException::conflictingLivestock);
+            var expected = operation.toString();
+            if (!expected.equals(response.path("operationId").stringValue(null))
+                    || !expected.equals(response.path("crmId").stringValue(null))) throw ApiException.invalidResponse();
+            return new Receipt(expected, expected);
+        });
     }
 }

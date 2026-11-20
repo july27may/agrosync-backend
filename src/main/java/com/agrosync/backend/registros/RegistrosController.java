@@ -1,6 +1,7 @@
 package com.agrosync.backend.registros;
 
 import com.agrosync.backend.auth.FarmAccess;
+import com.agrosync.backend.bitacora.Bitacora;
 import com.agrosync.backend.auth.SuiteCrmIdentity;
 import com.agrosync.backend.shared.exception.ApiException;
 import jakarta.validation.Valid;
@@ -22,10 +23,12 @@ public class RegistrosController {
     private static final String CRM = "/Api/V8/custom/agrosync/registros/";
     private final FarmAccess access;
     private final SuiteCrmIdentity crm;
+    private final Bitacora audit;
 
-    public RegistrosController(FarmAccess access, SuiteCrmIdentity crm) {
+    public RegistrosController(FarmAccess access, SuiteCrmIdentity crm, Bitacora audit) {
         this.access = access;
         this.crm = crm;
+        this.audit = audit;
     }
 
     @GetMapping
@@ -46,11 +49,13 @@ public class RegistrosController {
     @PostMapping("/alta")
     JsonNode newFarm(Principal principal, @PathVariable String modulo, @Valid @RequestBody FarmCreate input) {
         if (!modulo.equals("fincas")) throw ApiException.forbidden();
-        var result = crm.post(principal, CRM + "fincas/alta", input, ApiException::conflictingRecord);
-        var id = input.operationId().toString();
-        if (!id.equals(result.path("operationId").stringValue(null))
-                || !id.equals(result.path("fincaId").stringValue(null))) throw ApiException.invalidResponse();
-        return result;
+        return audit.sync(principal, input.operationId(), input.operationId().toString(), "registros/fincas/alta", () -> {
+            var result = crm.post(principal, CRM + "fincas/alta", input, ApiException::conflictingRecord);
+            var id = input.operationId().toString();
+            if (!id.equals(result.path("operationId").stringValue(null))
+                    || !id.equals(result.path("fincaId").stringValue(null))) throw ApiException.invalidResponse();
+            return result;
+        });
     }
 
     record Change(@NotNull UUID operationId, @NotNull @Pattern(regexp = ID) String fincaId,
@@ -93,13 +98,15 @@ public class RegistrosController {
                 || (modulo.equals("insumos") && (input.unidad() == null || input.categoria() == null))) {
             throw ApiException.invalidRecord();
         }
-        var result = crm.post(principal, CRM + modulo, input, ApiException::conflictingRecord);
-        var expected = input.id() == null ? input.operationId().toString() : input.id();
-        var record = result.path("registro");
-        if (!input.operationId().toString().equals(result.path("operationId").stringValue(null))
-                || !expected.equals(record.path("id").stringValue(null))
-                || !record.path("version").isString()) throw ApiException.invalidResponse();
-        return result;
+        return audit.sync(principal, input.operationId(), input.fincaId(), "registros/" + modulo, () -> {
+            var result = crm.post(principal, CRM + modulo, input, ApiException::conflictingRecord);
+            var expected = input.id() == null ? input.operationId().toString() : input.id();
+            var record = result.path("registro");
+            if (!input.operationId().toString().equals(result.path("operationId").stringValue(null))
+                    || !expected.equals(record.path("id").stringValue(null))
+                    || !record.path("version").isString()) throw ApiException.invalidResponse();
+            return result;
+        });
     }
     private static boolean positive(String value) {
         return value != null && new java.math.BigDecimal(value).signum() > 0;

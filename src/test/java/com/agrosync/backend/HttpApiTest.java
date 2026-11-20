@@ -17,6 +17,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 import java.net.InetSocketAddress;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -35,6 +36,7 @@ class HttpApiTest {
     private static final AtomicReference<String> FORM = new AtomicReference<>();
     private static final AtomicReference<String> PERMISSIONS = new AtomicReference<>();
     private static final AtomicReference<String> EXPECTED_DEVICE_VERIFIER = new AtomicReference<>();
+    private static final CopyOnWriteArrayList<tools.jackson.databind.JsonNode> AUDIT = new CopyOnWriteArrayList<>();
     private static final HttpServer CRM = mockCrm();
 
     @DynamicPropertySource
@@ -51,6 +53,7 @@ class HttpApiTest {
 
     @BeforeEach
     void setup() {
+        AUDIT.clear();
         http = MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
         PERMISSIONS.set("""
                 {"id":"usuario-id","fincas":[{"id":"demo-id","role":"REGISTRADOR"},{"id":"segunda","role":"CONSULTA"}]}
@@ -164,6 +167,15 @@ class HttpApiTest {
                 .andExpect(status().isForbidden());
         http.perform(post("/api/v1/cosechas/sync").session(session).with(csrf()).contentType("application/json").content(payload))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.crmId").value("00000000-0000-4000-8000-000000000002"));
+        assertThat(AUDIT).hasSize(2);
+        assertThat(AUDIT.stream().map(row -> row.path("evento").stringValue())).containsExactly("INTENTO", "CONFIRMADO");
+        assertThat(AUDIT.getFirst().path("intentoId").stringValue()).isEqualTo(AUDIT.getLast().path("intentoId").stringValue());
+        assertThat(AUDIT.getLast().path("operationId").stringValue()).isEqualTo("00000000-0000-4000-8000-000000000002");
+        assertThat(AUDIT.getLast().has("pesoGramos")).isFalse();
+        http.perform(get("/api/v1/bitacora").session(session).param("fincaId", "segunda"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.eventos").isArray());
+        http.perform(get("/api/v1/bitacora").session(session).param("fincaId", "ajena"))
+                .andExpect(status().isForbidden());
     }
 
     @Test
@@ -255,6 +267,14 @@ class HttpApiTest {
                         String route = path.equals("/Api/V8/custom/agrosync/cosechas")
                                 ? exchange.getRequestMethod() + " " + path : path;
                         json = switch (route) {
+                            case "/Api/V8/custom/agrosync/bitacora" -> {
+                                if ("GET".equals(exchange.getRequestMethod())) yield "{\"eventos\":[],\"siguiente\":null}";
+                                var data = tools.jackson.databind.json.JsonMapper.builder().build()
+                                        .readTree(exchange.getRequestBody().readAllBytes());
+                                AUDIT.add(data);
+                                yield "{\"intentoId\":\"" + data.path("intentoId").stringValue()
+                                        + "\",\"evento\":\"" + data.path("evento").stringValue() + "\"}";
+                            }
                             case "/Api/V8/current-user" -> "{\"data\":{\"id\":\"usuario-id\",\"attributes\":{\"user_name\":\"persona\"}}}";
                             case "/Api/V8/custom/agrosync/access" -> PERMISSIONS.get();
                             case "GET /Api/V8/custom/agrosync/cosechas" ->
