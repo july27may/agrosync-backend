@@ -112,7 +112,10 @@ class HttpApiTest {
                 .isEqualTo(java.time.Duration.ofMinutes(90).toMillis());
         http.perform(get("/api/v1/fincas").session(session).param("page", "0")).andExpect(status().isBadRequest());
         http.perform(get("/api/v1/lotes").session(session)).andExpect(status().isBadRequest());
-        http.perform(post(SESSION + "/logout").session(session).with(csrf())).andExpect(status().isNoContent());
+        http.perform(post(SESSION + "/logout").session(session).with(csrf()).header("Origin", "http://127.0.0.1:5173"))
+                .andExpect(status().isNoContent())
+                .andExpect(header().string("X-AgroSync-Logout-Url", "http://127.0.0.1:8080/logout"))
+                .andExpect(header().string("Access-Control-Expose-Headers", "X-AgroSync-Logout-Url"));
         http.perform(get(SESSION + "/me")).andExpect(status().isUnauthorized());
     }
 

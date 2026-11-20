@@ -19,6 +19,7 @@ class CorsConfig implements WebMvcConfigurer {
                 .allowedOrigins(frontendOrigin)
                 .allowedMethods("GET", "POST")
                 .allowedHeaders("Content-Type", "X-CSRF-TOKEN")
+                .exposedHeaders("X-AgroSync-Logout-Url")
                 .allowCredentials(true);
     }
 }

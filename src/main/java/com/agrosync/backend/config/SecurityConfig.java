@@ -1,22 +1,32 @@
 package com.agrosync.backend.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.*;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.util.UriComponentsBuilder;
+
+import java.net.URI;
 
 @Configuration(proxyBeanMethods = false)
 class SecurityConfig {
     @Bean
-    SecurityFilterChain security(HttpSecurity http) throws Exception {
+    SecurityFilterChain security(HttpSecurity http,
+                                 @Value("${AGROSYNC_CRM_PUBLIC_URL:http://127.0.0.1:8080}") URI crmPublic) throws Exception {
+        var crmLogout = UriComponentsBuilder.fromUri(crmPublic).path("/logout").build().toUriString();
         return http.cors(Customizer.withDefaults())
                 .requestCache(cache -> cache.disable())
                 .authorizeHttpRequests(rules -> rules
                         .requestMatchers("/actuator/health", "/api/v1/auth/csrf", "/api/v1/auth/login", "/api/v1/auth/callback").permitAll()
                         .anyRequest().authenticated())
                 .logout(logout -> logout.logoutUrl("/api/v1/auth/logout").deleteCookies("JSESSIONID")
-                        .logoutSuccessHandler((request, response, auth) -> response.setStatus(204)))
+                        .logoutSuccessHandler((request, response, auth) -> {
+                            response.setHeader("Cache-Control", "no-store");
+                            response.setHeader("X-AgroSync-Logout-Url", crmLogout);
+                            response.setStatus(204);
+                        }))
                 .exceptionHandling(errors -> errors
                         .authenticationEntryPoint((request, response, e) -> error(response, 401, "AUTENTICACION_REQUERIDA", "Inicia sesión."))
                         .accessDeniedHandler((request, response, e) -> error(response, 403, "ACCESO_DENEGADO", "Acceso denegado.")))
