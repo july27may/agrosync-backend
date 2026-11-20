@@ -46,6 +46,42 @@ public final class ApiException extends RuntimeException {
                 "SuiteCRM encontró un conflicto con el registro, su código o una referencia pendiente.");
     }
 
+    public static ApiException invalidRecord() {
+        return new ApiException(HttpStatus.BAD_REQUEST, "REGISTRO_INVALIDO", "Revisa los campos obligatorios.");
+    }
+
+    public static ApiException conflictingRecord(String code) {
+        return switch (code) {
+            case "VERSION_INCOMPATIBLE" -> new ApiException(HttpStatus.CONFLICT, code,
+                    "El registro cambió en SuiteCRM. Revisa la versión central antes de reintentar.");
+            case "CODIGO_DUPLICADO" -> new ApiException(HttpStatus.CONFLICT, code,
+                    "El código ya está en uso. Elige otro código.");
+            case "UNIDAD_INMUTABLE" -> new ApiException(HttpStatus.CONFLICT, code,
+                    "La unidad de control se conserva para mantener el historial de existencias.");
+            case "CONFIGURACION_ROL" -> new ApiException(HttpStatus.CONFLICT, code,
+                    "Configura un único rol AgroSync Administrador de finca en SuiteCRM.");
+            default -> new ApiException(HttpStatus.CONFLICT, "REGISTRO_CONFLICTIVO",
+                    "SuiteCRM rechazó una operación incompatible con el registro.");
+        };
+    }
+
+    public static ApiException conflictingInventory(String code) {
+        return switch (code) {
+            case "SALDO_INSUFICIENTE" -> new ApiException(HttpStatus.CONFLICT, code,
+                    "El saldo confirmado es insuficiente para esta salida.");
+            case "INSUMO_CAMBIADO" -> new ApiException(HttpStatus.CONFLICT, code,
+                    "El insumo está inactivo o su unidad cambió.");
+            case "COMPENSACION_INVALIDA" -> new ApiException(HttpStatus.CONFLICT, code,
+                    "El movimiento de origen ya se compensó o no coincide.");
+            default -> new ApiException(HttpStatus.CONFLICT, "INVENTARIO_CONFLICTO",
+                    "SuiteCRM rechazó una operación incompatible con el inventario.");
+        };
+    }
+
+    public static ApiException invalidMovement() {
+        return new ApiException(HttpStatus.BAD_REQUEST, "MOVIMIENTO_INVALIDO", "La cantidad debe ser positiva.");
+    }
+
     public static ApiException conflictingHarvest() {
         return new ApiException(HttpStatus.CONFLICT, "COSECHA_CONFLICTIVA",
                 "SuiteCRM encontró un conflicto con la operación o con los permisos de la finca.");

@@ -35,7 +35,7 @@ public class GanaderiaController {
                   @NotBlank @Size(max = 30) String codigo, @NotBlank @Size(max = 255) String nombre,
                   @NotNull @Pattern(regexp = "hembra|macho") String sexo,
                   @Pattern(regexp = "ternero|ternera|novillo|novilla|vaca|toro") String categoria,
-                  @PastOrPresent LocalDate nacimiento, @Pattern(regexp = ID) String madreId,
+                  @PastOrPresent LocalDate nacimiento, @Pattern(regexp = ID) String madreId, Boolean registrarNacimiento,
                   @Size(max = 100) String raza,
                   @NotNull @Pattern(regexp = "activo|vendido|fallecido|inactivo") String estado) {}
 
@@ -50,6 +50,9 @@ public class GanaderiaController {
 
     @PostMapping("/animales")
     Receipt animal(@Valid @RequestBody Animal input, Principal principal) {
+        if (Boolean.TRUE.equals(input.registrarNacimiento()) && (input.nacimiento() == null || input.madreId() == null)) {
+            throw ApiException.invalidRecord();
+        }
         return submit(principal, input.fincaId(), input.operationId(), "animales", input, true);
     }
 

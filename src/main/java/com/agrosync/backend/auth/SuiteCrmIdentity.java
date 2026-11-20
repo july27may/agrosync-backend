@@ -109,6 +109,10 @@ public class SuiteCrmIdentity {
     }
 
     public JsonNode post(Principal principal, String path, Object body, java.util.function.Supplier<ApiException> conflict) {
+        return post(principal, path, body, ignored -> conflict.get());
+    }
+
+    public JsonNode post(Principal principal, String path, Object body, Function<String, ApiException> conflict) {
         var user = identity(principal);
         try {
             var document = client.post().uri(path)
@@ -122,12 +126,21 @@ public class SuiteCrmIdentity {
             throw switch (problem.getStatusCode().value()) {
                 case 401 -> ApiException.unauthenticated();
                 case 403 -> ApiException.forbidden();
-                case 409 -> conflict.get();
+                case 409 -> conflict.apply(conflictCode(problem));
                 case 503 -> ApiException.unavailable();
                 default -> ApiException.invalidResponse();
             };
         } catch (RestClientException problem) {
             throw ApiException.invalidResponse();
+        }
+    }
+
+    private String conflictCode(RestClientResponseException problem) {
+        try {
+            var body = problem.getResponseBodyAs(JsonNode.class);
+            return body == null ? "" : body.path("code").stringValue("");
+        } catch (RuntimeException invalidBody) {
+            return "";
         }
     }
 
