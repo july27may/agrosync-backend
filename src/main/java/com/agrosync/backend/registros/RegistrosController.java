@@ -72,7 +72,7 @@ public class RegistrosController {
                   @Pattern(regexp = "hembra|macho") String sexo, @jakarta.validation.constraints.PastOrPresent LocalDate nacimiento,
                   @Pattern(regexp = ID) String madreId, @Size(max = 100) String raza,
                   @Pattern(regexp = "activo|vendido|fallecido|inactivo") String estado,
-                  @Pattern(regexp = ID) String animalId, @Pattern(regexp = ID) String responsableId,
+                  @Pattern(regexp = ID) String animalId, @Pattern(regexp = "(?:" + ID + ")?") String responsableId,
                   @Size(max = 150) String producto, @Size(max = 100) String certificado, @Size(max = 4000) String observaciones) {}
 
     @PostMapping
@@ -85,6 +85,7 @@ public class RegistrosController {
             throw ApiException.forbidden();
         }
         if ((input.id() != null && input.version() == null)
+                || ("".equals(input.responsableId()) && !modulo.equals("labores"))
                 || (modulo.equals("animales") && (input.id() == null || input.codigo() == null || input.codigo().isBlank()
                         || input.sexo() == null || input.estado() == null))
                 || (modulo.equals("eventos") && (input.id() == null || input.animalId() == null || input.fecha() == null || input.tipo() == null))
