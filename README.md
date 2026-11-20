@@ -1,5 +1,7 @@
 # AgroSync Backend
 
+Consulta la [matriz RF01–RF12 y los resultados del prototipo](https://github.com/july27may/agrosync-suitecrm/blob/main/docs/validacion-rf01-rf12.md).
+
 Servicio de lectura de fincas para React. Usa Java 21, Spring Boot 4.1.2, Maven, Spring Web MVC, Validation, Actuator y RestClient. SuiteCRM 8.10.2 es la fuente de datos. El token OAuth2 identifica a la integración con SuiteCRM. Las personas inician sesión con Usuarios de SuiteCRM mediante un segundo cliente OAuth2.
 
 ## Estructura por funcionalidad

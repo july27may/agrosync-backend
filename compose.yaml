@@ -2,6 +2,7 @@ name: agrosync-backend
 
 services:
   backend:
+    restart: unless-stopped
     build: .
     user: "${AGROSYNC_RUN_UID:-1000}:${AGROSYNC_RUN_GID:-1000}"
     environment:

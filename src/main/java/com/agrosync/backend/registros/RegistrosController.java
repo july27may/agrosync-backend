@@ -16,7 +16,7 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/registros/{modulo:fincas|lotes|labores|insumos|cosechas}")
+@RequestMapping("/api/v1/registros/{modulo:fincas|lotes|labores|insumos|cosechas|animales|eventos}")
 public class RegistrosController {
     private static final String ID = "[A-Za-z0-9_-]{1,36}";
     private static final String CRM = "/Api/V8/custom/agrosync/registros/";
@@ -57,13 +57,18 @@ public class RegistrosController {
                   @Pattern(regexp = ID) String id, @Pattern(regexp = "[a-f0-9]{64}") String version,
                   @NotBlank @Size(max = 255) String nombre, @Size(max = 30) String codigo,
                   @Pattern(regexp = ID) String loteId, LocalDate fecha,
-                  @Pattern(regexp = "siembra|fertilizacion|control_malezas|poda|otra") String tipo,
+                  @Pattern(regexp = "siembra|fertilizacion|control_malezas|poda|otra|vacunacion|tratamiento|revision|otro") String tipo,
                   @Pattern(regexp = ID) String recolectorId,
                   @Pattern(regexp = "cereza|pergamino") String estadoCafe,
                   @Pattern(regexp = "[0-9]{1,11}(\\.[0-9]{1,3})?") String pesoKg,
                   @Pattern(regexp = "[0-9]{1,12}(\\.[0-9]{1,2})?") String tarifaKg,
                   @Pattern(regexp = "kg|l|unidad") String unidad,
-                  @Pattern(regexp = "abono|alimento|medicamento|otro") String categoria) {}
+                  @Pattern(regexp = "abono|alimento|medicamento|otro|ternero|ternera|novillo|novilla|vaca|toro") String categoria,
+                  @Pattern(regexp = "hembra|macho") String sexo, @jakarta.validation.constraints.PastOrPresent LocalDate nacimiento,
+                  @Pattern(regexp = ID) String madreId, @Size(max = 100) String raza,
+                  @Pattern(regexp = "activo|vendido|fallecido|inactivo") String estado,
+                  @Pattern(regexp = ID) String animalId, @Pattern(regexp = ID) String responsableId,
+                  @Size(max = 150) String producto, @Size(max = 100) String certificado, @Size(max = 4000) String observaciones) {}
 
     @PostMapping
     JsonNode apply(Principal principal, @PathVariable String modulo, @Valid @RequestBody Change input) {
@@ -75,6 +80,9 @@ public class RegistrosController {
             throw ApiException.forbidden();
         }
         if ((input.id() != null && input.version() == null)
+                || (modulo.equals("animales") && (input.id() == null || input.codigo() == null || input.codigo().isBlank()
+                        || input.sexo() == null || input.estado() == null))
+                || (modulo.equals("eventos") && (input.id() == null || input.animalId() == null || input.fecha() == null || input.tipo() == null))
                 || (modulo.equals("fincas") && !input.fincaId().equals(input.id()))
                 || (modulo.equals("labores") && (input.loteId() == null || input.fecha() == null || input.tipo() == null))
                 || (modulo.equals("cosechas") && (input.id() == null || input.loteId() == null || input.fecha() == null

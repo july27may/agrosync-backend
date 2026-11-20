@@ -58,6 +58,10 @@ public final class ApiException extends RuntimeException {
                     "El código ya está en uso. Elige otro código.");
             case "UNIDAD_INMUTABLE" -> new ApiException(HttpStatus.CONFLICT, code,
                     "La unidad de control se conserva para mantener el historial de existencias.");
+            case "REFERENCIA_CICLICA" -> new ApiException(HttpStatus.CONFLICT, code,
+                    "La madre seleccionada genera un ciclo. Elige otra referencia.");
+            case "OPERACION_REUTILIZADA" -> new ApiException(HttpStatus.CONFLICT, code,
+                    "El identificador ya corresponde a otra edición.");
             case "CONFIGURACION_ROL" -> new ApiException(HttpStatus.CONFLICT, code,
                     "Configura un único rol AgroSync Administrador de finca en SuiteCRM.");
             default -> new ApiException(HttpStatus.CONFLICT, "REGISTRO_CONFLICTIVO",
